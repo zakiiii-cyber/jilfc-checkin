@@ -29,11 +29,13 @@ function checkin(v) {
   const id = clean(v.id, 40), name = clean(v.name, 120), inv = clean(v.invitedBy, 120);
   if (!id || !name || !inv) return { ok: false, error: "invalid" };
   const s = sheet(), last = s.getLastRow();
-  if (last > 1 && s.getRange(2, 1, last - 1, 1).getValues().some(x => String(x[0]) === id)) return { ok: true, dup: true };
+  if (last > 1 && s.getRange(2, 1, last - 1, 1).getDisplayValues().some(x => String(x[0]) === id)) return { ok: true, dup: true };
   const now = new Date();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(v.date) ? v.date : Utilities.formatDate(now, TZ, "yyyy-MM-dd");
-  s.appendRow([id, date, Utilities.formatDate(now, TZ, "HH:mm"), name, inv, clean(v.city, 120),
-    v.visit === "Second-time" ? "Second-time" : "First-time", clean(v.note, 1000), APPROVE_BY_DEFAULT ? "yes" : "no"]);
+  const row = s.getLastRow() + 1, cells = s.getRange(row, 1, 1, 9);
+  cells.setNumberFormat("@");        // plain text first, so Sheets keeps the date and time exactly as written
+  cells.setValues([[id, date, Utilities.formatDate(now, TZ, "HH:mm"), name, inv, clean(v.city, 120),
+    v.visit === "Second-time" ? "Second-time" : "First-time", clean(v.note, 1000), APPROVE_BY_DEFAULT ? "yes" : "no"]]);
   return { ok: true };
 }
 
@@ -51,7 +53,7 @@ function doPost(e) {
     cache.remove("bad");
 
     const s = sheet(), last = s.getLastRow();
-    const all = last > 1 ? s.getRange(2, 1, last - 1, 9).getValues().map(x => x.map(String)) : [];
+    const all = last > 1 ? s.getRange(2, 1, last - 1, 9).getDisplayValues() : [];
     const rowOf = id => { const i = all.findIndex(x => x[0] === String(id)); return i < 0 ? 0 : i + 2; };
 
     if (r.action === "list") {
